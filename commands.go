@@ -8,7 +8,7 @@ import (
     "fmt"
 )
 
-var builtins = []string{"type", "echo", "exit"}
+var builtins = []string{"type", "echo", "exit", "pwd"}
 
 func GetUserCommand() (string, error){
     fmt.Fprint(os.Stdout, "$ ")

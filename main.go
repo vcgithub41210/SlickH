@@ -10,11 +10,11 @@ var _ = fmt.Fprint
 
 func main() {
     for {
-	input , err := GetUserCommand()
+	cmd , err := GetUserCommand()
 	if err != nil {
 	    fmt.Println("error getting user command")
 	}
-	tokens := strings.Split(input, " ")
+	tokens := strings.Split(cmd, " ")
 	switch tokens[0] {
 	case "exit":
 	    os.Exit(0)
@@ -22,10 +22,12 @@ func main() {
 	    fmt.Println(strings.Join(tokens[1:]," "))
 	case "type":
 	    fmt.Println(FindCmd(tokens[1]))
+	case "pwd":
+	    currentWorkingDirectory,_ := os.Getwd();
+	    fmt.Println(currentWorkingDirectory)
 	default:
 	   fmt.Println(SearchExec(tokens))
 	}
     }
 
 }
-
