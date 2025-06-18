@@ -10,6 +10,15 @@ import (
 
 var builtins = []string{"type", "echo", "exit", "pwd"}
 
+func ChangeDirectory(path string) {
+    if path[0] == '~'{
+	path = os.Getenv("HOME") + path[1:]
+    }
+    err := os.Chdir(path)
+    if err != nil{
+	fmt.Println("cd: " +  path + ": No such file or directory")
+    }
+}
 func GetUserCommand() (string, error){
     fmt.Fprint(os.Stdout, "$ ")
     command, err := bufio.NewReader(os.Stdin).ReadString('\n')
