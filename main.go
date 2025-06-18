@@ -16,6 +16,11 @@ func main() {
 	}
 	tokens := strings.Split(cmd, " ")
 	switch tokens[0] {
+	case "cd":
+	    err := os.Chdir(tokens[1])
+	    if err != nil {
+		fmt.Println("cd: " + tokens[1] + ": No such file or directory")
+	    }
 	case "exit":
 	    os.Exit(0)
 	case "echo":
