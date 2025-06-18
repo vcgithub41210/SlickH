@@ -10,6 +10,30 @@ import (
 
 var builtins = []string{"type", "echo", "exit", "pwd"}
 
+func ParseCommand(command string)[]string{
+    var arguements []string
+    curr := ""
+    inSingleQuote, inDoubleQuote := false,false
+    for i:= 0; i < len(command);i++{
+	if command[i] == '\'' && !inDoubleQuote {
+	    inSingleQuote = !inSingleQuote
+	} else if command[i] == '"' && !inSingleQuote {
+	    inDoubleQuote = !inDoubleQuote
+	} else if command[i] == ' ' && !inSingleQuote && !inDoubleQuote{
+	    if curr != ""{
+		arguements = append(arguements,curr)
+		curr = ""
+	    }
+	} else {
+	    curr  = curr + string(command[i])
+	}
+    }
+    if curr != ""{
+	arguements = append(arguements,curr)
+    }
+    return arguements
+}
+
 func ChangeDirectory(path string) {
     if path[0] == '~'{
 	path = os.Getenv("HOME") + path[1:]

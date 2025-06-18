@@ -14,21 +14,21 @@ func main() {
 	if err != nil {
 	    fmt.Println("error getting user command")
 	}
-	tokens := strings.Split(cmd, " ")
-	switch tokens[0] {
+	arguements := ParseCommand(cmd) 
+	switch arguements[0] {
 	case "cd":
-	    ChangeDirectory(tokens[1])
+	    ChangeDirectory(arguements[1])
 	case "exit":
 	    os.Exit(0)
 	case "echo":
-	    fmt.Println(strings.Join(tokens[1:]," "))
+	    fmt.Println(strings.Join(arguements[1:]," "))
 	case "type":
-	    fmt.Println(FindCmd(tokens[1]))
+	    fmt.Println(FindCmd(arguements[1]))
 	case "pwd":
 	    currentWorkingDirectory,_ := os.Getwd();
 	    fmt.Println(currentWorkingDirectory)
 	default:
-	   fmt.Println(SearchExec(tokens))
+	   fmt.Println(SearchExec(arguements))
 	}
     }
 
