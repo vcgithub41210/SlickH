@@ -13,9 +13,17 @@ var builtins = []string{"type", "echo", "exit", "pwd"}
 func ParseCommand(command string)[]string{
     var arguements []string
     curr := ""
-    inSingleQuote, inDoubleQuote := false,false
+    inSingleQuote, inDoubleQuote, isEscape := false,false,false
     for i:= 0; i < len(command);i++{
-	if command[i] == '\'' && !inDoubleQuote {
+	if isEscape{
+	    if inDoubleQuote && !(command[i] == '$' || command[i] == '\\' || command[i] == '"'){
+		curr += "\\"
+	    }
+	    curr  = curr + string(command[i])
+	    isEscape = false
+	} else if command[i] == '\\' && !inSingleQuote{
+	    isEscape = true
+	} else if command[i] == '\'' && !inDoubleQuote {
 	    inSingleQuote = !inSingleQuote
 	} else if command[i] == '"' && !inSingleQuote {
 	    inDoubleQuote = !inDoubleQuote
@@ -33,7 +41,6 @@ func ParseCommand(command string)[]string{
     }
     return arguements
 }
-
 func ChangeDirectory(path string) {
     if path[0] == '~'{
 	path = os.Getenv("HOME") + path[1:]
@@ -43,6 +50,7 @@ func ChangeDirectory(path string) {
 	fmt.Println("cd: " +  path + ": No such file or directory")
     }
 }
+
 func GetUserCommand() (string, error){
     fmt.Fprint(os.Stdout, "$ ")
     command, err := bufio.NewReader(os.Stdin).ReadString('\n')
