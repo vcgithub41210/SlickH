@@ -10,25 +10,31 @@ var _ = fmt.Fprint
 
 func main() {
     for {
-	cmd , err := GetUserCommand()
+	user_input , err := GetUserCommand()
 	if err != nil {
 	    fmt.Println("error getting user command")
 	}
-	arguements := ParseCommand(cmd) 
-	switch arguements[0] {
+	command, args := ParseCommand(user_input) 
+	switch command {
 	case "cd":
-	    ChangeDirectory(arguements[1])
+	    if len(args) > 1{
+		fmt.Println("cd: too many arguements")
+	    } else if len(args) == 0{
+		ChangeDirectory(os.Getenv("HOME"))
+	    } else { 
+		ChangeDirectory(args[0])
+	    }
 	case "exit":
 	    os.Exit(0)
 	case "echo":
-	    fmt.Println(strings.Join(arguements[1:]," "))
+	    fmt.Println(strings.Join(args," "))
 	case "type":
-	    fmt.Println(FindCmd(arguements[1]))
+	    fmt.Println(FindCmd(args[0]))
 	case "pwd":
 	    currentWorkingDirectory,_ := os.Getwd();
 	    fmt.Println(currentWorkingDirectory)
 	default:
-	   fmt.Println(SearchExec(arguements))
+	   fmt.Println(SearchExec(command,args))
 	}
     }
 

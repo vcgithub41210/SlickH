@@ -10,7 +10,7 @@ import (
 
 var builtins = []string{"type", "echo", "exit", "pwd"}
 
-func ParseCommand(command string) []string{
+func ParseCommand(command string) (string,[]string){
     // set of variables required for parsing
     var (
 	arguements []string
@@ -59,12 +59,13 @@ func ParseCommand(command string) []string{
 	}
 	arguements = append(arguements,curr)
     }
-    return arguements
+    if len(arguements) == 0 {
+	return "",arguements
+    } 
+    return arguements[0],arguements[1:]
 }
+
 func ChangeDirectory(path string) {
-    if path[0] == '~'{
-	path = os.Getenv("HOME") + path[1:]
-    }
     err := os.Chdir(path)
     if err != nil{
 	fmt.Println("cd: " +  path + ": No such file or directory")
@@ -81,13 +82,12 @@ func GetUserCommand() (string, error){
     return command, nil
 }
 
-func SearchExec(tokens []string) string{
-    name := tokens[0]
+func SearchExec(cmd string,tokens []string) string{
     for _,path := range( strings.Split(os.Getenv("PATH"),":")){
-	file := path + "/" + name
+	file := path + "/" + cmd
 	if _, err := os.Stat(file); err == nil {
-	    cmd := exec.Command(file, tokens[1:]...)
-	    output, err := cmd.CombinedOutput()
+	    command := exec.Command(file, tokens...)
+	    output, err := command.CombinedOutput()
 	    if err != nil {
 		panic(err)
 	    }
@@ -95,7 +95,7 @@ func SearchExec(tokens []string) string{
 	    return file[:len(file)-1]
 	}
     }
-    return fmt.Sprintf("%s: command not found",name)
+    return fmt.Sprintf("%s: command not found",cmd)
 }
 
 func FindCmd(cmd string) string {
