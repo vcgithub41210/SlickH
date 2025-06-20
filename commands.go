@@ -10,33 +10,53 @@ import (
 
 var builtins = []string{"type", "echo", "exit", "pwd"}
 
-func ParseCommand(command string)[]string{
-    var arguements []string
-    curr := ""
-    inSingleQuote, inDoubleQuote, isEscape := false,false,false
+func ParseCommand(command string) []string{
+    // set of variables required for parsing
+    var (
+	arguements []string
+	curr string
+	isEscape bool
+	inSingleQuote bool
+	inDoubleQuote bool
+	isHomeReference bool
+    )
     for i:= 0; i < len(command);i++{
+	ch := command[i]
+	if isHomeReference {
+	    if ch == ' ' || ch == '/' {
+		curr += os.Getenv("HOME")
+	    } else {
+		curr += "~"
+	    }
+	    isHomeReference = false
+	}
 	if isEscape{
-	    if inDoubleQuote && !(command[i] == '$' || command[i] == '\\' || command[i] == '"'){
+	    if inDoubleQuote && !(ch == '$' || ch == '\\' || ch == '"'){
 		curr += "\\"
 	    }
-	    curr  = curr + string(command[i])
+	    curr = curr + string(ch)
 	    isEscape = false
-	} else if command[i] == '\\' && !inSingleQuote{
+	} else if ch == '~' && !inDoubleQuote && !inSingleQuote && curr == "" {
+	    isHomeReference = true
+	} else if ch == '\\' && !inSingleQuote{
 	    isEscape = true
-	} else if command[i] == '\'' && !inDoubleQuote {
+	} else if ch == '\'' && !inDoubleQuote {
 	    inSingleQuote = !inSingleQuote
-	} else if command[i] == '"' && !inSingleQuote {
+	} else if ch == '"' && !inSingleQuote {
 	    inDoubleQuote = !inDoubleQuote
-	} else if command[i] == ' ' && !inSingleQuote && !inDoubleQuote{
+	} else if ch == ' ' && !inSingleQuote && !inDoubleQuote{
 	    if curr != ""{
 		arguements = append(arguements,curr)
 		curr = ""
 	    }
 	} else {
-	    curr  = curr + string(command[i])
+	    curr = curr + string(ch)
 	}
     }
-    if curr != ""{
+    if curr != "" || isHomeReference{
+	if isHomeReference {
+	    curr = os.Getenv("HOME")
+	}
 	arguements = append(arguements,curr)
     }
     return arguements
@@ -66,7 +86,7 @@ func SearchExec(tokens []string) string{
     for _,path := range( strings.Split(os.Getenv("PATH"),":")){
 	file := path + "/" + name
 	if _, err := os.Stat(file); err == nil {
-	    cmd := exec.Command(name, tokens[1:]...)
+	    cmd := exec.Command(file, tokens[1:]...)
 	    output, err := cmd.CombinedOutput()
 	    if err != nil {
 		panic(err)
