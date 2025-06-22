@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -28,6 +29,8 @@ func main() {
 	    os.Exit(0)
 	case "echo":
 	    WriteToTarget(fmt.Sprintf("%s\n",strings.Join(args," ")),target)
+	case "cat":
+	    Cat(args,target)
 	case "type":
 	    fmt.Println(FindCmd(args[0]))
 	case "pwd":
@@ -47,3 +50,4 @@ func main() {
     }
 
 }
+

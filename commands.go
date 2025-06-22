@@ -99,7 +99,7 @@ func SearchExec(cmd string,tokens []string) (string,error){
     for _,path := range( strings.Split(os.Getenv("PATH"),":")){
 	file := path + "/" + cmd
 	if _, err := os.Stat(file); err == nil {
-	    command := exec.Command(file, tokens...)
+	    command := exec.Command(cmd, tokens...)
 	    output, err := command.CombinedOutput()
 	    if err != nil {
 		return "",err
@@ -108,7 +108,7 @@ func SearchExec(cmd string,tokens []string) (string,error){
 	    return file, nil
 	}
     }
-    return fmt.Sprintf("%s: command not found",cmd),nil
+    return fmt.Sprintf("%s: command not found\n",cmd),nil
 }
 
 func WriteToTarget(output string,file string) error{
