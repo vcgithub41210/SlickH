@@ -10,7 +10,7 @@ import (
 
 var builtins = []string{"type", "echo", "exit", "pwd"}
 
-func ParseCommand(command string) (string,[]string){
+func ParseCommand(command string) (string,[]string,string){
     // set of variables required for parsing
     var (
 	arguements []string
@@ -20,6 +20,8 @@ func ParseCommand(command string) (string,[]string){
 	inDoubleQuote bool
 	isHomeReference bool
     )
+    redirect_idx := -1
+    idx := 0
     for i:= 0; i < len(command);i++{
 	ch := command[i]
 	if isHomeReference {
@@ -36,6 +38,9 @@ func ParseCommand(command string) (string,[]string){
 	    }
 	    curr = curr + string(ch)
 	    isEscape = false
+	} else if ch == '>' && (curr == "" || curr == "1") && !inDoubleQuote && !inSingleQuote{
+	    redirect_idx = idx
+	    curr = ""
 	} else if ch == '~' && !inDoubleQuote && !inSingleQuote && curr == "" {
 	    isHomeReference = true
 	} else if ch == '\\' && !inSingleQuote{
@@ -48,6 +53,7 @@ func ParseCommand(command string) (string,[]string){
 	    if curr != ""{
 		arguements = append(arguements,curr)
 		curr = ""
+		idx++
 	    }
 	} else {
 	    curr = curr + string(ch)
@@ -58,11 +64,18 @@ func ParseCommand(command string) (string,[]string){
 	    curr = os.Getenv("HOME")
 	}
 	arguements = append(arguements,curr)
+	idx++
     }
     if len(arguements) == 0 {
-	return "",arguements
-    } 
-    return arguements[0],arguements[1:]
+	return "",arguements,""
+    }
+    if redirect_idx != -1{
+	if redirect_idx == idx{
+	    return arguements[0],arguements[1:idx],""
+	}
+	return arguements[0] , arguements[1:redirect_idx], arguements[redirect_idx]
+    }
+    return arguements[0],arguements[1:],""
 }
 
 func ChangeDirectory(path string) {
@@ -82,20 +95,36 @@ func GetUserCommand() (string, error){
     return command, nil
 }
 
-func SearchExec(cmd string,tokens []string) string{
+func SearchExec(cmd string,tokens []string) (string,error){
     for _,path := range( strings.Split(os.Getenv("PATH"),":")){
 	file := path + "/" + cmd
 	if _, err := os.Stat(file); err == nil {
 	    command := exec.Command(file, tokens...)
 	    output, err := command.CombinedOutput()
 	    if err != nil {
-		panic(err)
+		return "",err
 	    }
 	    file = string(output)
-	    return file[:len(file)-1]
+	    return file, nil
 	}
     }
-    return fmt.Sprintf("%s: command not found",cmd)
+    return fmt.Sprintf("%s: command not found",cmd),nil
+}
+
+func WriteToTarget(output string,file string) error{
+    var (
+	f *os.File
+	err error
+    )
+    if file == "" {
+	os.Stdout.Write([]byte(output))
+	return nil
+    }
+    err = nil
+    f, err = os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+    _,err = f.Write([]byte(output))
+    err = f.Close()
+    return err
 }
 
 func FindCmd(cmd string) string {

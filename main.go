@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 	    fmt.Println("error getting user command")
 	}
-	command, args := ParseCommand(user_input) 
+	command, args, target := ParseCommand(user_input) 
 	switch command {
 	case "cd":
 	    if len(args) > 1{
@@ -27,14 +27,22 @@ func main() {
 	case "exit":
 	    os.Exit(0)
 	case "echo":
-	    fmt.Println(strings.Join(args," "))
+	    WriteToTarget(fmt.Sprintf("%s\n",strings.Join(args," ")),target)
 	case "type":
 	    fmt.Println(FindCmd(args[0]))
 	case "pwd":
 	    currentWorkingDirectory,_ := os.Getwd();
 	    fmt.Println(currentWorkingDirectory)
 	default:
-	   fmt.Println(SearchExec(command,args))
+	    output, err := SearchExec(command,args)
+	    if err != nil {
+		fmt.Println(err)
+	    } else {
+		err := WriteToTarget(output,target)
+		if err != nil{
+		fmt.Println(err)
+		}
+	    }
 	}
     }
 
