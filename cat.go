@@ -6,7 +6,7 @@ import (
 )
 
 
-func Cat(args []string,target string) {
+func Cat(args []string,target string,redir_type int) {
     var o *os.File
     if target == "" {
 	o = os.Stdout
@@ -20,9 +20,18 @@ func Cat(args []string,target string) {
     for _,file := range args {
 	content, err := os.ReadFile(file)
 	if err != nil {
-	    os.Stdout.Write([]byte(fmt.Sprintf("cat: %s: No such file or directory\n",file)))
+	    if redir_type == 0{
+		os.Stdout.Write([]byte(fmt.Sprintf("cat: %s: No such file or directory\n",file)))
+	    } else {
+		o.Write([]byte(fmt.Sprintf("cat: %s: No such file or directory\n",file)))
+	    }
 	} else {
-	    o.Write(content)
+	    if redir_type == 0 {
+		o.Write(content)
+	    } else {
+		os.Stdout.Write(content)
+	    }
 	}
     }
 }
+

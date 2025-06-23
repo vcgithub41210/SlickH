@@ -2,6 +2,7 @@ package main
 
 import (
     "os/exec"
+    "errors"
     "strings"
     "os"
     "bufio"
@@ -10,7 +11,7 @@ import (
 
 var builtins = []string{"type", "echo", "exit", "pwd"}
 
-func ParseCommand(command string) (string,[]string,string){
+func ParseCommand(command string) (string,[]string,string,int){
     // set of variables required for parsing
     var (
 	arguements []string
@@ -20,6 +21,7 @@ func ParseCommand(command string) (string,[]string,string){
 	inDoubleQuote bool
 	isHomeReference bool
     )
+    redirection_type := 0
     redirect_idx := -1
     idx := 0
     for i:= 0; i < len(command);i++{
@@ -38,7 +40,8 @@ func ParseCommand(command string) (string,[]string,string){
 	    }
 	    curr = curr + string(ch)
 	    isEscape = false
-	} else if ch == '>' && (curr == "" || curr == "1") && !inDoubleQuote && !inSingleQuote{
+	} else if ch == '>' && (curr == "" || curr == "1" || curr == "2") && !inDoubleQuote && !inSingleQuote{
+	    if (curr == "2") {redirection_type = 1}
 	    redirect_idx = idx
 	    curr = ""
 	} else if ch == '~' && !inDoubleQuote && !inSingleQuote && curr == "" {
@@ -67,15 +70,15 @@ func ParseCommand(command string) (string,[]string,string){
 	idx++
     }
     if len(arguements) == 0 {
-	return "",arguements,""
+	return "",arguements,"",redirection_type
     }
     if redirect_idx != -1{
 	if redirect_idx == idx{
-	    return arguements[0],arguements[1:idx],""
+	    return arguements[0],arguements[1:idx],"",redirection_type
 	}
-	return arguements[0] , arguements[1:redirect_idx], arguements[redirect_idx]
+	return arguements[0] , arguements[1:redirect_idx], arguements[redirect_idx],redirection_type
     }
-    return arguements[0],arguements[1:],""
+    return arguements[0],arguements[1:],"",redirection_type
 }
 
 func ChangeDirectory(path string) {
@@ -95,20 +98,27 @@ func GetUserCommand() (string, error){
     return command, nil
 }
 
-func SearchExec(cmd string,tokens []string) (string,error){
-    for _,path := range( strings.Split(os.Getenv("PATH"),":")){
+func Execute(cmd string, tokens []string,target string,redir_type int) error {
+    for _,path := range (strings.Split(os.Getenv("PATH"),":")){
 	file := path + "/" + cmd
-	if _, err := os.Stat(file); err == nil {
-	    command := exec.Command(cmd, tokens...)
-	    output, err := command.CombinedOutput()
-	    if err != nil {
-		return "",err
+	if _,err := os.Stat(file); err == nil {
+	    command := exec.Command(cmd,tokens...)
+	    if target != ""{
+		f, _ := os.OpenFile(target,os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+		if (redir_type == 0){
+		    command.Stdout = f
+		} else {
+		    command.Stderr = f
+		}
+	    } else {
+		command.Stdout = os.Stdout
+		command.Stderr = os.Stderr
 	    }
-	    file = string(output)
-	    return file, nil
+	    command.Run()
+	    return nil
 	}
     }
-    return fmt.Sprintf("%s: command not found\n",cmd),nil
+    return errors.New(fmt.Sprintf("%s: command not found\n",cmd))
 }
 
 func WriteToTarget(output string,file string) error{
