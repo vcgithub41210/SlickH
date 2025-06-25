@@ -14,7 +14,7 @@ func main() {
 	if err != nil {
 	    fmt.Println("error getting user command")
 	}
-	command, args, target, redir_type := ParseCommand(user_input) 
+	command, args, outf, errf, mods := ParseCommand(user_input) 
 	switch command {
 	case "cd":
 	    if len(args) > 1{
@@ -27,27 +27,19 @@ func main() {
 	case "exit":
 	    os.Exit(0)
 	case "echo":
-	    if redir_type == 0{
-		WriteToTarget(fmt.Sprintf("%s\n",strings.Join(args," ")),target)
-	    } else {
-		WriteToTarget(fmt.Sprintf("%s\n",strings.Join(args," ")),"")
-		WriteToTarget("",target)
-	    }
-	case "cat":
-	    Cat(args,target,redir_type)
+		WriteToTarget(fmt.Sprintf("%s\n",strings.Join(args," ")),outf,mods&2)
+		WriteToTarget("",errf,mods&1)
 	case "type":
-	    fmt.Println(FindCmd(args[0]))
+	    if len(args) != 0 {
+		fmt.Println(FindCmd(args[0]))
+	    }
 	case "pwd":
 	    currentWorkingDirectory,_ := os.Getwd();
 	    fmt.Println(currentWorkingDirectory)
 	default:
-	    err := Execute(command,args,target,redir_type)
+	    err := Execute(command,args,outf,errf,mods)
 	    if err != nil {
-		if redir_type == 0{
-		    WriteToTarget(err.Error(),"")
-		} else {
-		    WriteToTarget(err.Error(),target)
-		}
+		WriteToTarget(err.Error(),errf,mods & 1)
 	    }
 	}
     }

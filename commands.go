@@ -1,4 +1,5 @@
 package main
+package main
 
 import (
     "os/exec"
@@ -11,75 +12,115 @@ import (
 
 var builtins = []string{"type", "echo", "exit", "pwd"}
 
-func ParseCommand(command string) (string,[]string,string,int){
-    // set of variables required for parsing
+func ParseCommand(command string) (string,[]string,string,string,int){
     var (
-	arguements []string
-	curr string
-	isEscape bool
-	inSingleQuote bool
-	inDoubleQuote bool
-	isHomeReference bool
+	args []string
+	tmp string
+	isEsc bool
+	inSQuote bool
+	inDQuote bool
+	isHome bool
+	Mode int
+	getFile int = -1
+	OutFile string = ""
+	ErrFile string = ""
     )
-    redirection_type := 0
-    redirect_idx := -1
-    idx := 0
-    for i:= 0; i < len(command);i++{
-	ch := command[i]
-	if isHomeReference {
-	    if ch == ' ' || ch == '/' {
-		curr += os.Getenv("HOME")
+    for i:= 0 ;i < len(command);i++{
+	c := command[i]
+	if isHome {
+	    if c == ' ' || c == '/' {
+		tmp += os.Getenv("HOME")
 	    } else {
-		curr += "~"
+		tmp += "~"
 	    }
-	    isHomeReference = false
+	    isHome = false
 	}
-	if isEscape{
-	    if inDoubleQuote && !(ch == '$' || ch == '\\' || ch == '"'){
-		curr += "\\"
+	if isEsc {
+	    if inDQuote && !(c == '$' || c == '\\' || c == '"'){
+		tmp += "\\"
 	    }
-	    curr = curr + string(ch)
-	    isEscape = false
-	} else if ch == '>' && (curr == "" || curr == "1" || curr == "2") && !inDoubleQuote && !inSingleQuote{
-	    if (curr == "2") {redirection_type = 1}
-	    redirect_idx = idx
-	    curr = ""
-	} else if ch == '~' && !inDoubleQuote && !inSingleQuote && curr == "" {
-	    isHomeReference = true
-	} else if ch == '\\' && !inSingleQuote{
-	    isEscape = true
-	} else if ch == '\'' && !inDoubleQuote {
-	    inSingleQuote = !inSingleQuote
-	} else if ch == '"' && !inSingleQuote {
-	    inDoubleQuote = !inDoubleQuote
-	} else if ch == ' ' && !inSingleQuote && !inDoubleQuote{
-	    if curr != ""{
-		arguements = append(arguements,curr)
-		curr = ""
-		idx++
+	    tmp = tmp + string(c)
+	    isEsc = false
+	} else if c == '>' && !inSQuote && !inDQuote {
+	    j := len(tmp) -1
+	    if j >= 0 && tmp[j] == '>'{
+		tmp = ">>"
+	    } else {
+		if j >= 0 && tmp == "2" {
+		    getFile = 1
+		} else {
+		    getFile = 0
+		}
+		if tmp != "2" && tmp != "1" && tmp != ""{
+		    args = append(args,tmp)
+		}
+		tmp = ">"
+	    }
+	} else if tmp == ">" || tmp == ">>" {
+	    if tmp == ">"{
+		if getFile == 1 {
+		    Mode = Mode &^ 1
+		}else {
+		    Mode = Mode &^ 2
+		}
+	    }else {
+		if getFile == 1 {
+		    Mode |= 1
+		}else {
+		    Mode |= 2
+		}
+	    }
+	    tmp = ""
+	    i--
+	} else if c == '~' && !inDQuote && !inSQuote && tmp == ""{
+	    isHome = true
+	} else if c == '\\' && !inSQuote {
+	    isEsc = true
+	} else if c == '\'' && !inDQuote {
+	    inSQuote = !inSQuote
+	} else if c == '"' && !inSQuote {
+	    inDQuote = !inDQuote
+	} else if c == ' ' && !inSQuote && !inDQuote{
+	    if tmp != "" {
+		if getFile != -1 {
+		    if getFile == 0{
+			OutFile = tmp
+		    } else {
+			ErrFile = tmp
+		    }
+		    getFile = -1
+		} else {
+		    args = append(args,tmp)
+		}	
+		tmp = ""
 	    }
 	} else {
-	    curr = curr + string(ch)
+	    tmp = tmp + string(c)
 	}
     }
-    if curr != "" || isHomeReference{
-	if isHomeReference {
-	    curr = os.Getenv("HOME")
+
+    if tmp != "" || isHome{
+	if isHome {
+	    tmp = os.Getenv("HOME")
 	}
-	arguements = append(arguements,curr)
-	idx++
-    }
-    if len(arguements) == 0 {
-	return "",arguements,"",redirection_type
-    }
-    if redirect_idx != -1{
-	if redirect_idx == idx{
-	    return arguements[0],arguements[1:idx],"",redirection_type
+	if getFile != -1{
+	    if getFile == 0 {
+		OutFile = tmp
+	    } else {
+		ErrFile = tmp
+	    }
+	    getFile = -1
+	}else {
+	    args = append(args,tmp)
 	}
-	return arguements[0] , arguements[1:redirect_idx], arguements[redirect_idx],redirection_type
     }
-    return arguements[0],arguements[1:],"",redirection_type
+
+    if len(args) == 0 {
+	return "",[]string{},OutFile,ErrFile,Mode
+    }
+    return args[0],args[1:],OutFile,ErrFile,Mode
 }
+
 
 func ChangeDirectory(path string) {
     err := os.Chdir(path)
@@ -98,22 +139,33 @@ func GetUserCommand() (string, error){
     return command, nil
 }
 
-func Execute(cmd string, tokens []string,target string,redir_type int) error {
+func Execute(cmd string, args []string,outf string,errf string,mods int) error {
+    var outfile,errfile *os.File
     for _,path := range (strings.Split(os.Getenv("PATH"),":")){
 	file := path + "/" + cmd
 	if _,err := os.Stat(file); err == nil {
-	    command := exec.Command(cmd,tokens...)
-	    if target != ""{
-		f, _ := os.OpenFile(target,os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-		if (redir_type == 0){
-		    command.Stdout = f
-		} else {
-		    command.Stderr = f
-		}
+	    command := exec.Command(cmd,args...)
+
+	    if outf == ""{
+		outfile = os.Stdout
 	    } else {
-		command.Stdout = os.Stdout
-		command.Stderr = os.Stderr
+		if mods & 2 == 0{
+		    outfile,_ = os.OpenFile(outf,os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
+		}else{
+		    outfile,_ = os.OpenFile(outf,os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0644)
+		}
 	    }
+	    if errf == ""{
+		errfile = os.Stdout
+	    } else {
+		if mods & 1 == 0{
+		    errfile,_ = os.OpenFile(errf,os.O_CREATE | os.O_TRUNC | os.O_WRONLY, 0644)
+		}else{
+		    errfile,_ = os.OpenFile(errf,os.O_CREATE | os.O_APPEND | os.O_WRONLY, 0644)
+		}
+	    }
+	    command.Stdout = outfile
+	    command.Stderr = errfile
 	    command.Run()
 	    return nil
 	}
@@ -121,22 +173,20 @@ func Execute(cmd string, tokens []string,target string,redir_type int) error {
     return errors.New(fmt.Sprintf("%s: command not found\n",cmd))
 }
 
-func WriteToTarget(output string,file string) error{
-    var (
-	f *os.File
-	err error
-    )
+func WriteToTarget(output string,file string, mod int) {
+    var f *os.File
     if file == "" {
 	os.Stdout.Write([]byte(output))
-	return nil
+	return
     }
-    err = nil
-    f, err = os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-    _,err = f.Write([]byte(output))
-    err = f.Close()
-    return err
+    if mod != 0{
+	f, _ = os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0644)
+    }else {
+    f, _ = os.OpenFile(file, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+    }
+    f.Write([]byte(output))
+    f.Close()
 }
-
 func FindCmd(cmd string) string {
     for _,builtin := range builtins {
 	if builtin == cmd {
