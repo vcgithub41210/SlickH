@@ -40,20 +40,11 @@ func ReadInput() (string, error) {
 		}
 
 		switch buf[0] {
-		case 9: // Tab key
-		fmt.Println("working")
-			completed := HandleCompletion(cmd)
-			if completed != "" {
-				cmd = completed
-			}
-		case 127: // Backspace
+			case 127: // Backspace
 			if len(cmd) > 0 {
 				cmd = cmd[:len(cmd)-1]
 			}
-		case 3: // Ctrl+C
-			fmt.Println("^C")
-			return "", fmt.Errorf("interrupted")
-		case 13: // Enter
+			case 13: // Enter
 			fmt.Println()
 			return cmd, nil
 		default:

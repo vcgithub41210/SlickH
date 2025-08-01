@@ -5,7 +5,6 @@ import (
     "errors"
     "strings"
     "os"
-    "bufio"
     "fmt"
 )
 
@@ -130,7 +129,7 @@ func ChangeDirectory(path string) {
 
 func GetUserCommand() (string, error){
     fmt.Fprint(os.Stdout, "$ ")
-    command, err := bufio.NewReader(os.Stdin).ReadString('\n')
+    command, err := ReadInput()
     if err != nil {
 	return "", err
     }
