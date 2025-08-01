@@ -13,7 +13,6 @@ var commands = []string{"exit", "echo"}
 
 func HandleCompletion(cmd string) string {
 	for _, c := range commands {
-		fmt.Println(c)
 		if strings.HasPrefix(c, cmd) {
 
 			return c
@@ -38,13 +37,17 @@ func ReadInput() (string, error) {
 		if err != nil {
 			return "", err
 		}
-
-		if buf[0] == 127 {
+		if buf[0] == 9{
+			e := HandleCompletion(cmd)
+			if e != ""{
+				cmd = e
+			}
+		}else if buf[0] == 127 {
 			if len(cmd) > 0 {
 				cmd = cmd[:len(cmd)-1]
 			}
 		}else if buf[0] == 13 {
-			fmt.Println("\x1b[2K\r")
+			fmt.Println("\r")
 			return cmd, nil
 		}else {
 			cmd += string(buf[0])
