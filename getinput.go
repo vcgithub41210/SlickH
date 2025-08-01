@@ -39,20 +39,19 @@ func ReadInput() (string, error) {
 			return "", err
 		}
 
-		switch buf[0] {
-			case 127: // Backspace
+		if buf[0] == 127 {
 			if len(cmd) > 0 {
 				cmd = cmd[:len(cmd)-1]
 			}
-			case 13: // Enter
-			fmt.Println()
+		}else if buf[0] == 13 {
+			fmt.Println("\x1b[2K\r")
 			return cmd, nil
-		default:
+		}else {
 			cmd += string(buf[0])
 		}
 
 		// Clear and redraw line
-		fmt.Print("\x1b[2K\r" + cmd)
+		fmt.Print("\x1b[2K\r$ " + cmd)
 	}
 }
 

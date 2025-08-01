@@ -133,8 +133,7 @@ func GetUserCommand() (string, error){
     if err != nil {
 	return "", err
     }
-    command = command[:len(command)-1]
-    return command, nil
+    return command,nil
 }
 
 func Execute(cmd string, args []string,outf string,errf string,mods int) error {
